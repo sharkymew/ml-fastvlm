@@ -3,7 +3,30 @@
 # For licensing see accompanying LICENSE_MODEL file.
 # Copyright (C) 2025 Apple Inc. All Rights Reserved.
 #
-set -e
+set -euo pipefail
+
+mktemp_dir() {
+    local dir
+    if dir=$(mktemp -d 2>/dev/null); then
+        echo "$dir"
+    else
+        mktemp -d -t "fastvlm"
+    fi
+}
+
+download_file() {
+    local url="$1"
+    local destination="$2"
+
+    if command -v wget >/dev/null 2>&1; then
+        wget -q --progress=bar:noscroll --show-progress -O "$destination" "$url"
+    elif command -v curl >/dev/null 2>&1; then
+        curl -L --progress-bar "$url" -o "$destination"
+    else
+        echo "Error: neither wget nor curl is available. Please install one of them and retry." >&2
+        exit 1
+    fi
+}
 
 # Help function
 show_help() {
@@ -70,7 +93,7 @@ cleanup() {
 
 download_model() {
     # Download directory
-    tmp_dir=$(mktemp -d)
+    tmp_dir=$(mktemp_dir)
 
     # Model paths
     base_url="https://ml-site.cdn-apple.com/datasets/fastvlm"
@@ -99,7 +122,7 @@ download_model() {
 
     # Download model
     echo -e "\nDownloading '${model}' model ...\n"
-    wget -q --progress=bar:noscroll --show-progress -O "$tmp_zip_file" "$base_url/$model.zip"
+    download_file "$base_url/$model.zip" "$tmp_zip_file"
 
     # Unzip model
     echo -e "\nUnzipping model..."
